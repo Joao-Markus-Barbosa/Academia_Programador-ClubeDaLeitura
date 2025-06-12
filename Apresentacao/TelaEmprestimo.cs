@@ -8,12 +8,21 @@ namespace Academia_Programador_ClubeDaLeitura.Apresentacao
         private readonly RepositorioEmprestimo repoEmprestimo;
         private readonly RepositorioAmigo repoAmigo;
         private readonly RepositorioRevista repoRevista;
+        private readonly RepositorioMulta repoMulta;
+        private readonly RepositorioReserva repoReserva;
 
-        public TelaEmprestimo(RepositorioEmprestimo repoEmprestimo, RepositorioAmigo repoAmigo, RepositorioRevista repoRevista)
+        public TelaEmprestimo(
+            RepositorioEmprestimo repoEmprestimo,
+            RepositorioAmigo repoAmigo,
+            RepositorioRevista repoRevista,
+            RepositorioMulta repoMulta,
+            RepositorioReserva repoReserva)
         {
             this.repoEmprestimo = repoEmprestimo;
             this.repoAmigo = repoAmigo;
             this.repoRevista = repoRevista;
+            this.repoMulta = repoMulta;
+            this.repoReserva = repoReserva;
         }
 
         public void ExibirMenu()
@@ -53,6 +62,12 @@ namespace Academia_Programador_ClubeDaLeitura.Apresentacao
             Amigo amigo = SelecionarAmigo();
             if (amigo == null) return;
 
+            if (repoMulta.AmigoTemMultaPendente(amigo))
+            {
+                Console.WriteLine("Este amigo possui multas pendentes. Não pode realizar novo empréstimo.");
+                return;
+            }
+
             if (repoEmprestimo.AmigoTemEmprestimoAberto(amigo))
             {
                 Console.WriteLine("Este amigo já possui um empréstimo em aberto.");
@@ -61,6 +76,23 @@ namespace Academia_Programador_ClubeDaLeitura.Apresentacao
 
             Revista revista = SelecionarRevistaDisponivel();
             if (revista == null) return;
+
+            // Verifica reserva ativa de outro usuário
+            if (repoReserva.RevistaTemReservaAtiva(revista))
+            {
+                Reserva reservaAtiva = repoReserva.ObterReservaAtiva(revista, amigo);
+
+                if (reservaAtiva == null)
+                {
+                    Console.WriteLine("Esta revista está reservada por outro amigo.");
+                    return;
+                }
+                else
+                {
+                    reservaAtiva.Concluir();
+                    Console.WriteLine("Reserva convertida em empréstimo.");
+                }
+            }
 
             Emprestimo emprestimo = new Emprestimo(amigo, revista);
 
@@ -99,7 +131,16 @@ namespace Academia_Programador_ClubeDaLeitura.Apresentacao
                 return;
             }
 
-            ativos[indice].RegistrarDevolucao();
+            Emprestimo emprestimo = ativos[indice];
+            emprestimo.RegistrarDevolucao();
+
+            if (emprestimo.EstaAtrasado())
+            {
+                Multa multa = new Multa(emprestimo);
+                repoMulta.Inserir(multa);
+                Console.WriteLine($"⚠️ Empréstimo atrasado. Multa registrada: R$ {multa.Valor:F2}");
+            }
+
             Console.WriteLine("Devolução registrada com sucesso.");
         }
 
@@ -133,7 +174,9 @@ namespace Academia_Programador_ClubeDaLeitura.Apresentacao
                 Console.WriteLine($"{i} - {amigos[i]}");
 
             Console.Write("Número do amigo: ");
-            int indice = int.Parse(Console.ReadLine());
+            if (!int.TryParse(Console.ReadLine(), out int indice) || indice < 0 || indice >= amigos.Count)
+                return null;
+
             return repoAmigo.SelecionarPorIndice(indice);
         }
 
@@ -151,9 +194,13 @@ namespace Academia_Programador_ClubeDaLeitura.Apresentacao
                 Console.WriteLine($"{i} - {revistas[i]}");
 
             Console.Write("Número da revista: ");
-            int indice = int.Parse(Console.ReadLine());
+            if (!int.TryParse(Console.ReadLine(), out int indice) || indice < 0 || indice >= revistas.Count)
+                return null;
+
             return repoRevista.SelecionarPorIndice(indice);
         }
     }
 }
+
+
 

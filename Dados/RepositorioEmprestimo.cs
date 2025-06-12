@@ -35,6 +35,14 @@ namespace Academia_Programador_ClubeDaLeitura.Dados
         {
             return listaEmprestimos.Any(e => e.Amigo == amigo && e.Situacao == "Aberto");
         }
+
+        public List<Emprestimo> SelecionarAtrasados()
+        {
+            return listaEmprestimos
+                .Where(e => e.EstaAtrasado())
+                .ToList();
+        }
     }
 }
+
 
